@@ -168,6 +168,11 @@ impl Mmc5 {
         let prg_ram_block = ines.prg_ram_block()?;
         let chr_block = ines.chr_block()?;
 
+        let mut pulse1 = PulseChannelState::new("Pulse 1", "MMC5", 1_789_773, false);
+        let mut pulse2 = PulseChannelState::new("Pulse 2", "MMC5", 1_789_773, false);
+        pulse1.sweep_negate = true;
+        pulse2.sweep_negate = true;
+
         return Ok(Mmc5 {
             prg_rom: prg_rom_block.clone(),
             prg_ram: prg_ram_block.clone(),
@@ -210,8 +215,8 @@ impl Mmc5 {
             ppu_fetches_this_scanline: 0,
             multiplicand_a: 0xFF,
             multiplicand_b: 0xFF,
-            pulse_1: PulseChannelState::new("Pulse 1", "MMC5", 1_789_773, false),
-            pulse_2: PulseChannelState::new("Pulse 2", "MMC5", 1_789_773, false),
+            pulse_1: pulse1,
+            pulse_2: pulse2,
             audio_sequencer_counter: 0,
             pcm_channel: Mmc5PcmChannel::new(),
         })
@@ -857,12 +862,9 @@ impl Mapper for Mmc5 {
     }
 
     fn mix_expansion_audio(&self, nes_sample: f32) -> f32 {
-        let pulse_1_output = (self.pulse_1.output() as f32 / 15.0) - 0.5;
-        let pulse_2_output = (self.pulse_2.output() as f32 / 15.0) - 0.5;
-        let mut pcm_output = (self.pcm_channel.level as f32 / 256.0) - 0.5;
-        if self.pcm_channel.muted {
-            pcm_output = 0.0;
-        }
+        let pulse_1_output = if !self.pulse_1.debug_disable {(self.pulse_1.output() as f32 / 15.0) - 0.5} else {0.0};
+        let pulse_2_output = if !self.pulse_2.debug_disable {(self.pulse_2.output() as f32 / 15.0) - 0.5} else {0.0};
+        let pcm_output = if !self.pcm_channel.muted {(self.pcm_channel.level as f32 / 256.0) - 0.5} else {0.0};
 
         return 
             (pulse_1_output + pulse_2_output) * 0.12 + 

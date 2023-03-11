@@ -380,8 +380,6 @@ impl NsfMapper {
         let mut nsf_player = assemble(nsf_player_opcodes, PLAYER_ORIGIN)?;
         nsf_player.resize(PLAYER_SIZE as usize, 0);
 
-        println!("NSF Version: {}", nsf.header.version_number());
-
         let mut prg_rom = nsf.prg.clone();
         let mut prg_rom_banks = nsf.header.initial_banks();
         if !nsf.header.is_bank_switched() {
@@ -402,6 +400,12 @@ impl NsfMapper {
         let cycles_per_play = (nsf.header.ntsc_playback_speed() as f32) * ntsc_clockrate / 1000000.0;
         let mut font_chr = include_bytes!("../../assets/troll8x8.chr").to_vec();
         font_chr.resize(0x2000, 0);
+
+        // MMC5 pulses have no sweep unit, so we need to explicitly disable sweep muting
+        let mut mmc5_pulse_1 = PulseChannelState::new("Pulse 1", "MMC5", 1_789_773, false);
+        let mut mmc5_pulse_2 = PulseChannelState::new("Pulse 2", "MMC5", 1_789_773, false);
+        mmc5_pulse_1.sweep_negate = true;
+        mmc5_pulse_2.sweep_negate = true;
 
         let mut mapper = NsfMapper {
             prg: MemoryBlock::new(&prg_rom, MemoryType::Ram),
@@ -434,8 +438,8 @@ impl NsfMapper {
             mmc5_enabled: nsf.header.mmc5(),
             mmc5_multiplicand_a: 0,
             mmc5_multiplicand_b: 0,
-            mmc5_pulse_1: PulseChannelState::new("Pulse 1", "MMC5", 1_789_773, false),
-            mmc5_pulse_2: PulseChannelState::new("Pulse 2", "MMC5", 1_789_773, false),
+            mmc5_pulse_1: mmc5_pulse_1,
+            mmc5_pulse_2: mmc5_pulse_2,
             mmc5_audio_sequencer_counter: 0,
             mmc5_pcm_channel: Mmc5PcmChannel::new(),
             mmc5_exram: vec![0u8; 0x400],
@@ -906,12 +910,10 @@ impl NsfMapper {
         if !self.mmc5_enabled {
             return 0.0;
         }
-        let pulse_1_output = (self.mmc5_pulse_1.output() as f32 / 15.0) - 0.5;
-        let pulse_2_output = (self.mmc5_pulse_2.output() as f32 / 15.0) - 0.5;
-        let mut pcm_output = (self.mmc5_pcm_channel.level as f32 / 256.0) - 0.5;
-        if self.mmc5_pcm_channel.muted {
-            pcm_output = 0.0;
-        }
+        
+        let pulse_1_output = if !self.mmc5_pulse_1.debug_disable {(self.mmc5_pulse_1.output() as f32 / 15.0) - 0.5} else {0.0};
+        let pulse_2_output = if !self.mmc5_pulse_2.debug_disable {(self.mmc5_pulse_2.output() as f32 / 15.0) - 0.5} else {0.0};
+        let pcm_output = if !self.mmc5_pcm_channel.muted {(self.mmc5_pcm_channel.level as f32 / 256.0) - 0.5} else {0.0};
 
         return 
             (pulse_1_output + pulse_2_output) * 0.12 + 
@@ -1198,9 +1200,10 @@ impl Mapper for NsfMapper {
             0xC000 ..= 0xCFFF => self.prg.banked_read(0x1000, self.prg_rom_banks[4], (address - 0xC000) as usize),
             0xD000 ..= 0xDFFF => self.prg.banked_read(0x1000, self.prg_rom_banks[5], (address - 0xD000) as usize),
             0xE000 ..= 0xEFFF => self.prg.banked_read(0x1000, self.prg_rom_banks[6], (address - 0xE000) as usize),
-            0xF000 ..= 0xFFF9 => self.prg.banked_read(0x1000, self.prg_rom_banks[7], (address - 0xF000) as usize),
+            0xF000 ..= 0xFFFB => self.prg.banked_read(0x1000, self.prg_rom_banks[7], (address - 0xF000) as usize),
             0xFFFC => {Some(((PLAYER_ORIGIN & 0x00FF) >> 0) as u8)}, // reset vector
             0xFFFD => {Some(((PLAYER_ORIGIN & 0xFF00) >> 8) as u8)},
+            0xFFFE ..= 0xFFFF => self.prg.banked_read(0x1000, self.prg_rom_banks[7], (address - 0xF000) as usize),
             _ => None
         }
     }
