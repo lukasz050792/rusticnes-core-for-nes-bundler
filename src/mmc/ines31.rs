@@ -101,16 +101,12 @@ impl Mapper for INes31 {
         self.prg_rom.save_state(buff);
         self.chr.save_state(buff);
         save_vec(buff, &self.vram);
-        for prg_bank in &self.prg_banks {
-            save_usize(buff, *prg_bank);
-        }
+        save_vec_usize(buff, &self.prg_banks);
     }
 
     fn load_state(&mut self, buff: &mut Vec<u8>) {
-        for prg_bank in &mut self.prg_banks.iter_mut().rev() {
-            *prg_bank = load_usize(buff);
-        }
-        self.vram = load_vec(buff, self.vram.len());
+        load_vec_usize(buff, &mut self.prg_banks);
+        load_vec(buff, &mut self.vram);
         self.chr.load_state(buff);
         self.prg_rom.load_state(buff);
     }

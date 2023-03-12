@@ -94,8 +94,8 @@ impl Mapper for UxRom {
     }
 
     fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.vram = load_vec(buff, self.vram.len());
-        self.prg_bank = load_usize(buff);
+        load_vec(buff, &mut self.vram);
+        load_usize(buff, &mut self.prg_bank);
         self.chr.load_state(buff);
         self.prg_rom.load_state(buff);
     }

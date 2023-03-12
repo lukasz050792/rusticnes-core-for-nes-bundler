@@ -95,7 +95,7 @@ impl MemoryBlock {
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
         if !self.readonly {
-            self.bytes = load_vec(buff, self.bytes.len());
+            load_vec(buff, &mut self.bytes);
         }
     }
 }

@@ -94,7 +94,7 @@ impl Mapper for Nrom {
     }
 
     fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.vram = load_vec(buff, self.vram.len());
+        load_vec(buff, &mut self.vram);
 
         self.chr.load_state(buff);
         self.prg_ram.load_state(buff);

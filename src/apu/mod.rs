@@ -217,36 +217,36 @@ impl ApuState {
         }
     }
 
-    pub fn save_state(&self, data: &mut Vec<u8>) {
-        save_u64(data, self.current_cycle);
-        data.push(self.frame_sequencer_mode);
-        save_u16(data, self.frame_sequencer);
-        data.push(self.frame_reset_delay);
-        data.push(self.frame_interrupt as u8);
-        data.push(self.disable_interrupt as u8);
-        self.pulse_1.save_state(data);
-        self.pulse_2.save_state(data);
-        self.triangle.save_state(data);
-        self.noise.save_state(data);
-        self.dmc.save_state(data);
-        save_u64(data, self.generated_samples);
-        save_u64(data, self.next_sample_at);
+    pub fn save_state(&self, buff: &mut Vec<u8>) {
+        save_u64(buff, self.current_cycle);
+        save_u8(buff, self.frame_sequencer_mode);
+        save_u16(buff, self.frame_sequencer);
+        save_u8(buff, self.frame_reset_delay);
+        save_u8(buff, self.frame_interrupt as u8);
+        save_u8(buff, self.disable_interrupt as u8);
+        self.pulse_1.save_state(buff);
+        self.pulse_2.save_state(buff);
+        self.triangle.save_state(buff);
+        self.noise.save_state(buff);
+        self.dmc.save_state(buff);
+        save_u64(buff, self.generated_samples);
+        save_u64(buff, self.next_sample_at);
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.next_sample_at = load_u64(buff);
-        self.generated_samples = load_u64(buff);
+        load_u64(buff, &mut self.next_sample_at);
+        load_u64(buff, &mut self.generated_samples);
         self.dmc.load_state(buff);
         self.noise.load_state(buff);
         self.triangle.load_state(buff);
         self.pulse_2.load_state(buff);
         self.pulse_1.load_state(buff);
-        self.disable_interrupt = load_bool(buff);
-        self.frame_interrupt = load_bool(buff);
-        self.frame_reset_delay = buff.pop().unwrap();
-        self.frame_sequencer = load_u16(buff);
-        self.frame_sequencer_mode = buff.pop().unwrap();
-        self.current_cycle = load_u64(buff);
+        load_bool(buff, &mut self.disable_interrupt);
+        load_bool(buff, &mut self.frame_interrupt);
+        load_u8(buff, &mut self.frame_reset_delay);
+        load_u16(buff, &mut self.frame_sequencer);
+        load_u8(buff, &mut self.frame_sequencer_mode);
+        load_u64(buff, &mut self.current_cycle);
     }
 
     pub fn set_buffer_size(&mut self, buffer_size: usize) {

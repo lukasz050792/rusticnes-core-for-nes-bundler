@@ -52,21 +52,21 @@ impl VolumeEnvelopeState {
         }
     }
 
-    pub fn save_state(&self, data: &mut Vec<u8>) {
-        data.push(self.volume_register);
-        data.push(self.decay);
-        data.push(self.divider);
-        save_bool(data, self.enabled);
-        save_bool(data, self.looping);
-        save_bool(data, self.start_flag);
+    pub fn save_state(&self, buff: &mut Vec<u8>) {
+        save_u8(buff, self.volume_register);
+        save_u8(buff, self.decay);
+        save_u8(buff, self.divider);
+        save_bool(buff, self.enabled);
+        save_bool(buff, self.looping);
+        save_bool(buff, self.start_flag);
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.start_flag = load_bool(buff);
-        self.looping = load_bool(buff);
-        self.enabled = load_bool(buff);
-        self.divider = buff.pop().unwrap();
-        self.decay = buff.pop().unwrap();
-        self.volume_register = buff.pop().unwrap();
+        load_bool(buff, &mut self.start_flag);
+        load_bool(buff, &mut self.looping);
+        load_bool(buff, &mut self.enabled);
+        load_u8(buff, &mut self.divider);
+        load_u8(buff, &mut self.decay);
+        load_u8(buff, &mut self.volume_register);
     }
 }

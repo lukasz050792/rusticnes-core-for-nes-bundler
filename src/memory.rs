@@ -1,4 +1,4 @@
-use crate::{nes::NesState, save_load::{save_vec, load_vec}};
+use crate::{nes::NesState, save_load::{save_vec, load_vec, load_u8, save_u8}};
 
 pub struct CpuMemory {
     pub iram_raw: Vec<u8>,
@@ -18,14 +18,14 @@ impl CpuMemory {
         }
     }
 
-    pub fn save_state(&self, data: &mut Vec<u8>) {
-        save_vec(data, &self.iram_raw);
-        data.push(self.open_bus);
+    pub fn save_state(&self, buff: &mut Vec<u8>) {
+        save_vec(buff, &self.iram_raw);
+        save_u8(buff, self.open_bus);
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.open_bus = buff.pop().unwrap();
-        self.iram_raw = load_vec(buff, self.iram_raw.len())
+        load_u8(buff, &mut self.open_bus);
+        load_vec(buff, &mut self.iram_raw)
     }
 }
 

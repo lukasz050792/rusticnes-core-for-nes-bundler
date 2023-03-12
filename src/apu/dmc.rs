@@ -151,44 +151,44 @@ impl DmcState {
         return self.output_level as i16;
     }
 
-    pub fn save_state(&self, data: &mut Vec<u8>) {
-        save_bool(data, self.looping);
-        save_u16(data, self.period_initial);
-        save_u16(data, self.period_current);
-        data.push(self.output_level);
-        save_u16(data, self.starting_address);
-        save_u16(data, self.sample_length);
-        save_u16(data, self.current_address);
-        data.push(self.sample_buffer);
-        data.push(self.shift_register);
-        save_bool(data, self.sample_buffer_empty);
-        data.push(self.bits_remaining);
-        save_u16(data, self.bytes_remaining);
-        save_bool(data, self.silence_flag);
-        save_bool(data, self.interrupt_enabled);
-        save_bool(data, self.interrupt_flag);
-        save_bool(data, self.rdy_line);
-        data.push(self.rdy_delay);
+    pub fn save_state(&self, buff: &mut Vec<u8>) {
+        save_bool(buff, self.looping);
+        save_u16(buff, self.period_initial);
+        save_u16(buff, self.period_current);
+        save_u8(buff, self.output_level);
+        save_u16(buff, self.starting_address);
+        save_u16(buff, self.sample_length);
+        save_u16(buff, self.current_address);
+        save_u8(buff, self.sample_buffer);
+        save_u8(buff, self.shift_register);
+        save_bool(buff, self.sample_buffer_empty);
+        save_u8(buff, self.bits_remaining);
+        save_u16(buff, self.bytes_remaining);
+        save_bool(buff, self.silence_flag);
+        save_bool(buff, self.interrupt_enabled);
+        save_bool(buff, self.interrupt_flag);
+        save_bool(buff, self.rdy_line);
+        save_u8(buff, self.rdy_delay);
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.rdy_delay = buff.pop().unwrap();
-        self.rdy_line = load_bool(buff);
-        self.interrupt_flag = load_bool(buff);
-        self.interrupt_enabled = load_bool(buff);
-        self.silence_flag = load_bool(buff);
-        self.bytes_remaining = load_u16(buff);
-        self.bits_remaining = buff.pop().unwrap();
-        self.sample_buffer_empty = load_bool(buff);
-        self.shift_register = buff.pop().unwrap();
-        self.sample_buffer = buff.pop().unwrap();
-        self.current_address = load_u16(buff);
-        self.sample_length = load_u16(buff);
-        self.starting_address = load_u16(buff);
-        self.output_level = buff.pop().unwrap();
-        self.period_current = load_u16(buff);
-        self.period_initial = load_u16(buff);
-        self.looping = load_bool(buff);
+        load_u8(buff, &mut self.rdy_delay);
+        load_bool(buff, &mut self.rdy_line);
+        load_bool(buff, &mut self.interrupt_flag);
+        load_bool(buff, &mut self.interrupt_enabled);
+        load_bool(buff, &mut self.silence_flag);
+        load_u16(buff, &mut self.bytes_remaining);
+        load_u8(buff, &mut self.bits_remaining);
+        load_bool(buff, &mut self.sample_buffer_empty);
+        load_u8(buff, &mut self.shift_register);
+        load_u8(buff, &mut self.sample_buffer);
+        load_u16(buff, &mut self.current_address);
+        load_u16(buff, &mut self.sample_length);
+        load_u16(buff, &mut self.starting_address);
+        load_u8(buff, &mut self.output_level);
+        load_u16(buff, &mut self.period_current);
+        load_u16(buff, &mut self.period_initial);
+        load_bool(buff, &mut self.looping);
     }
 }
 

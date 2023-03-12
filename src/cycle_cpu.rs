@@ -36,13 +36,13 @@ impl Flags {
   }
 
   pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-    self.last_nmi = load_bool(buff);
-    self.negative = load_bool(buff);
-    self.overflow = load_bool(buff);
-    self.interrupts_disabled = load_bool(buff);
-    self.decimal = load_bool(buff);
-    self.zero = load_bool(buff);
-    self.carry = load_bool(buff);
+    load_bool(buff, &mut self.last_nmi);
+    load_bool(buff, &mut self.negative);
+    load_bool(buff, &mut self.overflow);
+    load_bool(buff, &mut self.interrupts_disabled);
+    load_bool(buff, &mut self.decimal);
+    load_bool(buff, &mut self.zero);
+    load_bool(buff, &mut self.carry);
   }
 }
 
@@ -97,22 +97,22 @@ impl Registers {
         self.flags.negative = data & (1 << 7) != 0;
     }
 
-    pub fn save_state(&self, data: &mut Vec<u8>) {
-      data.push(self.a);
-      data.push(self.x);
-      data.push(self.y);
-      save_u16(data, self.pc);
-      data.push(self.s);
-      self.flags.save_state(data);
+    pub fn save_state(&self, buff: &mut Vec<u8>) {
+      save_u8(buff, self.a);
+      save_u8(buff, self.x);
+      save_u8(buff, self.y);
+      save_u16(buff, self.pc);
+      save_u8(buff, self.s);
+      self.flags.save_state(buff);
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
       self.flags.load_state(buff);
-      self.s = buff.pop().unwrap();
-      self.pc = load_u16(buff);
-      self.y = buff.pop().unwrap();
-      self.x = buff.pop().unwrap();
-      self.a = buff.pop().unwrap();
+      load_u8(buff, &mut self.s);
+      load_u16(buff, &mut self.pc);
+      load_u8(buff, &mut self.y);
+      load_u8(buff, &mut self.x);
+      load_u8(buff, &mut self.a);
   }
 }
 
@@ -152,36 +152,36 @@ impl CpuState {
     }
   }
 
-  pub fn save_state(&self, data: &mut Vec<u8>) {
-    data.push(self.tick);
-    data.push(self.opcode);
-    data.push(self.data1);
-    data.push(self.data2);
-    save_u16(data, self.temp_address);
-    save_bool(data, self.service_routine_active);
-    save_bool(data, self.nmi_requested);
-    save_bool(data, self.irq_requested);
-    save_bool(data, self.last_nmi);
-    save_bool(data, self.upcoming_write);
-    save_bool(data, self.oam_dma_active);
-    save_u16(data, self.oam_dma_cycle);
-    save_u16(data, self.oam_dma_address);
+  pub fn save_state(&self, buff: &mut Vec<u8>) {
+    save_u8(buff, self.tick);
+    save_u8(buff, self.opcode);
+    save_u8(buff, self.data1);
+    save_u8(buff, self.data2);
+    save_u16(buff, self.temp_address);
+    save_bool(buff, self.service_routine_active);
+    save_bool(buff, self.nmi_requested);
+    save_bool(buff, self.irq_requested);
+    save_bool(buff, self.last_nmi);
+    save_bool(buff, self.upcoming_write);
+    save_bool(buff, self.oam_dma_active);
+    save_u16(buff, self.oam_dma_cycle);
+    save_u16(buff, self.oam_dma_address);
   }
 
   pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-    self.oam_dma_address = load_u16(buff);
-    self.oam_dma_cycle = load_u16(buff);
-    self.oam_dma_active = load_bool(buff);
-    self.upcoming_write = load_bool(buff);
-    self.last_nmi = load_bool(buff);
-    self.irq_requested = load_bool(buff);
-    self.nmi_requested = load_bool(buff);
-    self.service_routine_active = load_bool(buff);
-    self.temp_address = load_u16(buff);
-    self.data2 = buff.pop().unwrap();
-    self.data1 = buff.pop().unwrap();
-    self.opcode = buff.pop().unwrap();
-    self.tick = buff.pop().unwrap();
+    load_u16(buff, &mut self.oam_dma_address);
+    load_u16(buff, &mut self.oam_dma_cycle);
+    load_bool(buff, &mut self.oam_dma_active);
+    load_bool(buff, &mut self.upcoming_write);
+    load_bool(buff, &mut self.last_nmi);
+    load_bool(buff, &mut self.irq_requested);
+    load_bool(buff, &mut self.nmi_requested);
+    load_bool(buff, &mut self.service_routine_active);
+    load_u16(buff, &mut self.temp_address);
+    load_u8(buff, &mut self.data2);
+    load_u8(buff, &mut self.data1);
+    load_u8(buff, &mut self.opcode);
+    load_u8(buff, &mut self.tick);
   }
 }
 

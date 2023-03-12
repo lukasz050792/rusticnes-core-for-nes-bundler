@@ -301,37 +301,37 @@ impl Mapper for Mmc1 {
         self.chr.save_state(buff);
         save_vec(buff, &self.vram);
 
-        buff.push(self.shift_counter);
-        buff.push(self.shift_data);
+        save_u8(buff, self.shift_counter);
+        save_u8(buff, self.shift_data);
 
         save_usize(buff, self.chr_bank_0);
         save_usize(buff, self.chr_bank_1);
 
         save_usize(buff, self.prg_bank);
-        buff.push(self.prg_ram_enabled as u8);
+        save_u8(buff, self.prg_ram_enabled as u8);
         save_usize(buff, self.prg_ram_bank);
 
-        buff.push(self.control);
+        save_u8(buff, self.control);
 
-        buff.push(self.last_write as u8);
+        save_u8(buff, self.last_write as u8);
     }
 
     fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.last_write = buff.pop().unwrap() != 0;
+        load_bool(buff, &mut self.last_write);
 
-        self.control = buff.pop().unwrap();
+        load_u8(buff, &mut self.control);
 
-        self.prg_ram_bank = load_usize(buff);
-        self.prg_ram_enabled = buff.pop().unwrap() != 0;
-        self.prg_bank = load_usize(buff);
+        load_usize(buff, &mut self.prg_ram_bank);
+        load_bool(buff, &mut self.prg_ram_enabled);
+        load_usize(buff, &mut self.prg_bank);
 
-        self.chr_bank_1 = load_usize(buff);
-        self.chr_bank_0 = load_usize(buff);
+        load_usize(buff, &mut self.chr_bank_1);
+        load_usize(buff, &mut self.chr_bank_0);
         
-        self.shift_data = buff.pop().unwrap();
-        self.shift_counter = buff.pop().unwrap();
+        load_u8(buff, &mut self.shift_data);
+        load_u8(buff, &mut self.shift_counter);
 
-        self.vram = load_vec(buff, self.vram.len());
+        load_vec(buff, &mut self.vram);
         self.chr.load_state(buff);
         self.prg_ram.load_state(buff);
         self.prg_rom.load_state(buff);

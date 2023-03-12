@@ -84,26 +84,26 @@ impl NoiseChannelState {
         }
     }
 
-    pub fn save_state(&self, data: &mut Vec<u8>) {
-        data.push(self.length);
-        save_bool(data, self.length_halt_flag);
-        self.envelope.save_state(data);
-        self.length_counter.save_state(data);
-        data.push(self.mode);
-        save_u16(data, self.period_initial);
-        save_u16(data, self.period_current);
-        save_u16(data, self.shift_register);
+    pub fn save_state(&self, buff: &mut Vec<u8>) {
+        save_u8(buff, self.length);
+        save_bool(buff, self.length_halt_flag);
+        self.envelope.save_state(buff);
+        self.length_counter.save_state(buff);
+        save_u8(buff, self.mode);
+        save_u16(buff, self.period_initial);
+        save_u16(buff, self.period_current);
+        save_u16(buff, self.shift_register);
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.shift_register = load_u16(buff);
-        self.period_current = load_u16(buff);
-        self.period_initial = load_u16(buff);
-        self.mode = buff.pop().unwrap();
+        load_u16(buff, &mut self.shift_register);
+        load_u16(buff, &mut self.period_current);
+        load_u16(buff, &mut self.period_initial);
+        load_u8(buff, &mut self.mode);
         self.length_counter.load_state(buff);
         self.envelope.load_state(buff);
-        self.length_halt_flag = load_bool(buff);
-        self.length = buff.pop().unwrap();
+        load_bool(buff, &mut self.length_halt_flag);
+        load_u8(buff, &mut self.length);
     }
 }
 

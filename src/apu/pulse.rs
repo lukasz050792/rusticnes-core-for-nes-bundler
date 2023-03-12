@@ -139,36 +139,36 @@ impl PulseChannelState {
         }
     }
 
-    pub fn save_state(&self, data: &mut Vec<u8>) {
-        self.envelope.save_state(data);
-        self.length_counter.save_state(data);
-        save_bool(data, self.sweep_enabled);
-        data.push(self.sweep_period);
-        data.push(self.sweep_divider);
-        save_bool(data, self.sweep_negate);
-        data.push(self.sweep_shift);
-        save_bool(data, self.sweep_reload);
-        save_bool(data, self.sweep_ones_compliment);
-        data.push(self.duty);
-        data.push(self.sequence_counter);
-        save_u16(data, self.period_initial);
-        save_u16(data, self.period_current);
-        save_u64(data, self.cpu_clock_rate);
+    pub fn save_state(&self, buff: &mut Vec<u8>) {
+        self.envelope.save_state(buff);
+        self.length_counter.save_state(buff);
+        save_bool(buff, self.sweep_enabled);
+        save_u8(buff, self.sweep_period);
+        save_u8(buff, self.sweep_divider);
+        save_bool(buff, self.sweep_negate);
+        save_u8(buff, self.sweep_shift);
+        save_bool(buff, self.sweep_reload);
+        save_bool(buff, self.sweep_ones_compliment);
+        save_u8(buff, self.duty);
+        save_u8(buff, self.sequence_counter);
+        save_u16(buff, self.period_initial);
+        save_u16(buff, self.period_current);
+        save_u64(buff, self.cpu_clock_rate);
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.cpu_clock_rate = load_u64(buff);
-        self.period_current = load_u16(buff);
-        self.period_initial = load_u16(buff);
-        self.sequence_counter = buff.pop().unwrap();
-        self.duty = buff.pop().unwrap();
-        self.sweep_ones_compliment = load_bool(buff);
-        self.sweep_reload = load_bool(buff);
-        self.sweep_shift = buff.pop().unwrap();
-        self.sweep_negate = load_bool(buff);
-        self.sweep_divider = buff.pop().unwrap();
-        self.sweep_period = buff.pop().unwrap();
-        self.sweep_enabled = load_bool(buff);
+        load_u64(buff, &mut self.cpu_clock_rate);
+        load_u16(buff, &mut self.period_current);
+        load_u16(buff, &mut self.period_initial);
+        load_u8(buff, &mut self.sequence_counter);
+        load_u8(buff, &mut self.duty);
+        load_bool(buff, &mut self.sweep_ones_compliment);
+        load_bool(buff, &mut self.sweep_reload);
+        load_u8(buff, &mut self.sweep_shift);
+        load_bool(buff, &mut self.sweep_negate);
+        load_u8(buff, &mut self.sweep_divider);
+        load_u8(buff, &mut self.sweep_period);
+        load_bool(buff, &mut self.sweep_enabled);
         self.length_counter.load_state(buff);
         self.envelope.load_state(buff);
     }

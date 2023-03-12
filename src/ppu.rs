@@ -74,24 +74,24 @@ impl SpriteLatch {
         }
     }
 
-    pub fn save_state(&self, data: &mut Vec<u8>) {
-        data.push(self.tile_index);
-        data.push(self.bitmap_high);
-        data.push(self.bitmap_low);
-        data.push(self.attributes);
-        data.push(self.x_counter);
-        data.push(self.y_pos);
-        save_bool(data, self.active);
+    pub fn save_state(&self, buff: &mut Vec<u8>) {
+        save_u8(buff, self.tile_index);
+        save_u8(buff, self.bitmap_high);
+        save_u8(buff, self.bitmap_low);
+        save_u8(buff, self.attributes);
+        save_u8(buff, self.x_counter);
+        save_u8(buff, self.y_pos);
+        save_bool(buff, self.active);
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.active = load_bool(buff);
-        self.y_pos = buff.pop().unwrap();
-        self.x_counter = buff.pop().unwrap();
-        self.attributes = buff.pop().unwrap();
-        self.bitmap_low = buff.pop().unwrap();
-        self.bitmap_high = buff.pop().unwrap();
-        self.tile_index = buff.pop().unwrap();
+        load_bool(buff, &mut self.active);
+        load_u8(buff, &mut self.y_pos);
+        load_u8(buff, &mut self.x_counter);
+        load_u8(buff, &mut self.attributes);
+        load_u8(buff, &mut self.bitmap_low);
+        load_u8(buff, &mut self.bitmap_high);
+        load_u8(buff, &mut self.tile_index);
     }
 }
 
@@ -823,74 +823,74 @@ impl PpuState {
         return (attr_byte & mask) >> shift;
     }
 
-    pub fn save_state(&self, data: &mut Vec<u8>) {
-        save_vec(data, &self.internal_vram);
-        save_vec(data, &self.oam);
+    pub fn save_state(&self, buff: &mut Vec<u8>) {
+        save_vec(buff, &self.internal_vram);
+        save_vec(buff, &self.oam);
         for d in &self.secondary_oam {
-            d.save_state(data);
+            d.save_state(buff);
         }
-        save_usize(data, self.secondary_oam_index);
-        save_vec(data, &self.palette);
-        data.push(self.latch);
-        data.push(self.open_bus);
-        data.push(self.read_buffer);
-        data.push(self.control);
-        data.push(self.mask);
-        data.push(self.status);
-        data.push(self.oam_addr);
-        data.push(self.oam_dma_high);
-        save_u32(data, self.current_frame);
-        save_u16(data, self.current_scanline);
-        save_u16(data, self.current_scanline_cycle);
-        save_bool(data, self.write_toggle);
-        save_u16(data, self.current_vram_address);
-        save_u16(data, self.temporary_vram_address);
-        data.push(self.fine_x);
-        save_u16(data, self.tile_shift_low);
-        save_u16(data, self.tile_shift_high);
-        data.push(self.tile_low);
-        data.push(self.tile_high);
-        data.push(self.tile_index);
-        data.push(self.palette_shift_low);
-        data.push(self.palette_shift_high);
-        data.push(self.palette_latch);
-        data.push(self.attribute_byte);
-        save_bool(data, self.sprite_zero_on_scanline);
+        save_usize(buff, self.secondary_oam_index);
+        save_vec(buff, &self.palette);
+        save_u8(buff, self.latch);
+        save_u8(buff, self.open_bus);
+        save_u8(buff, self.read_buffer);
+        save_u8(buff, self.control);
+        save_u8(buff, self.mask);
+        save_u8(buff, self.status);
+        save_u8(buff, self.oam_addr);
+        save_u8(buff, self.oam_dma_high);
+        save_u32(buff, self.current_frame);
+        save_u16(buff, self.current_scanline);
+        save_u16(buff, self.current_scanline_cycle);
+        save_bool(buff, self.write_toggle);
+        save_u16(buff, self.current_vram_address);
+        save_u16(buff, self.temporary_vram_address);
+        save_u8(buff, self.fine_x);
+        save_u16(buff, self.tile_shift_low);
+        save_u16(buff, self.tile_shift_high);
+        save_u8(buff, self.tile_low);
+        save_u8(buff, self.tile_high);
+        save_u8(buff, self.tile_index);
+        save_u8(buff, self.palette_shift_low);
+        save_u8(buff, self.palette_shift_high);
+        save_u8(buff, self.palette_latch);
+        save_u8(buff, self.attribute_byte);
+        save_bool(buff, self.sprite_zero_on_scanline);
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.sprite_zero_on_scanline = load_bool(buff);
-        self.attribute_byte = buff.pop().unwrap();
-        self.palette_latch = buff.pop().unwrap();
-        self.palette_shift_high = buff.pop().unwrap();
-        self.palette_shift_low = buff.pop().unwrap();
-        self.tile_index = buff.pop().unwrap();
-        self.tile_high = buff.pop().unwrap();
-        self.tile_low = buff.pop().unwrap();
-        self.tile_shift_high = load_u16(buff);
-        self.tile_shift_low = load_u16(buff);
-        self.fine_x = buff.pop().unwrap();
-        self.temporary_vram_address = load_u16(buff);
-        self.current_vram_address = load_u16(buff);
-        self.write_toggle = load_bool(buff);
-        self.current_scanline_cycle = load_u16(buff);
-        self.current_scanline = load_u16(buff);
-        self.current_frame = load_u32(buff);
-        self.oam_dma_high = buff.pop().unwrap();
-        self.oam_addr = buff.pop().unwrap();
-        self.status = buff.pop().unwrap();
-        self.mask = buff.pop().unwrap();
-        self.control = buff.pop().unwrap();
-        self.read_buffer = buff.pop().unwrap();
-        self.open_bus = buff.pop().unwrap();
-        self.latch = buff.pop().unwrap();
-        self.palette = load_vec(buff, self.palette.len());
-        self.secondary_oam_index = load_usize(buff);
+        load_bool(buff, &mut self.sprite_zero_on_scanline);
+        load_u8(buff, &mut self.attribute_byte);
+        load_u8(buff, &mut self.palette_latch);
+        load_u8(buff, &mut self.palette_shift_high);
+        load_u8(buff, &mut self.palette_shift_low);
+        load_u8(buff, &mut self.tile_index);
+        load_u8(buff, &mut self.tile_high);
+        load_u8(buff, &mut self.tile_low);
+        load_u16(buff, &mut self.tile_shift_high);
+        load_u16(buff, &mut self.tile_shift_low);
+        load_u8(buff, &mut self.fine_x);
+        load_u16(buff, &mut self.temporary_vram_address);
+        load_u16(buff, &mut self.current_vram_address);
+        load_bool(buff, &mut self.write_toggle);
+        load_u16(buff, &mut self.current_scanline_cycle);
+        load_u16(buff, &mut self.current_scanline);
+        load_u32(buff, &mut self.current_frame);
+        load_u8(buff, &mut self.oam_dma_high);
+        load_u8(buff, &mut self.oam_addr);
+        load_u8(buff, &mut self.status);
+        load_u8(buff, &mut self.mask);
+        load_u8(buff, &mut self.control);
+        load_u8(buff, &mut self.read_buffer);
+        load_u8(buff, &mut self.open_bus);
+        load_u8(buff, &mut self.latch);
+        load_vec(buff, &mut self.palette);
+        load_usize(buff, &mut self.secondary_oam_index);
         for d in (&mut self.secondary_oam).into_iter().rev() {
             d.load_state(buff);
         }
-        self.oam = load_vec(buff, self.oam.len());
-        self.internal_vram = load_vec(buff, self.internal_vram.len());
+        load_vec(buff, &mut self.oam);
+        load_vec(buff, &mut self.internal_vram);
     }
 
     pub fn render_ntsc(&mut self, width: usize) {

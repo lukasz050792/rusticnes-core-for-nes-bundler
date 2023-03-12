@@ -107,29 +107,29 @@ impl TriangleChannelState {
         }
     }
 
-    pub fn save_state(&self, data: &mut Vec<u8>) {
-        self.length_counter.save_state(data);
-        save_bool(data, self.control_flag);
-        save_bool(data, self.linear_reload_flag);
-        data.push(self.linear_counter_initial);
-        data.push(self.linear_counter_current);
-        data.push(self.sequence_counter);
-        save_u16(data, self.period_initial);
-        save_u16(data, self.period_current);
-        data.push(self.length);
-        save_u64(data, self.cpu_clock_rate);
+    pub fn save_state(&self, buff: &mut Vec<u8>) {
+        self.length_counter.save_state(buff);
+        save_bool(buff, self.control_flag);
+        save_bool(buff, self.linear_reload_flag);
+        save_u8(buff, self.linear_counter_initial);
+        save_u8(buff, self.linear_counter_current);
+        save_u8(buff, self.sequence_counter);
+        save_u16(buff, self.period_initial);
+        save_u16(buff, self.period_current);
+        save_u8(buff, self.length);
+        save_u64(buff, self.cpu_clock_rate);
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.cpu_clock_rate = load_u64(buff);
-        self.length = buff.pop().unwrap();
-        self.period_current = load_u16(buff);
-        self.period_initial = load_u16(buff);
-        self.sequence_counter = buff.pop().unwrap();
-        self.linear_counter_current = buff.pop().unwrap();
-        self.linear_counter_initial = buff.pop().unwrap();
-        self.linear_reload_flag = load_bool(buff);
-        self.control_flag = load_bool(buff);
+        load_u64(buff, &mut self.cpu_clock_rate);
+        load_u8(buff, &mut self.length);
+        load_u16(buff, &mut self.period_current);
+        load_u16(buff, &mut self.period_initial);
+        load_u8(buff, &mut self.sequence_counter);
+        load_u8(buff, &mut self.linear_counter_current);
+        load_u8(buff, &mut self.linear_counter_initial);
+        load_bool(buff, &mut self.linear_reload_flag);
+        load_bool(buff, &mut self.control_flag);
         self.length_counter.load_state(buff);
     }
 }

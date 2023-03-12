@@ -48,32 +48,32 @@ impl NesState {
     }
 
     pub fn save_state(&self) -> Vec<u8> {
-        let mut data = vec!();
-        self.apu.save_state(&mut data);
-        self.cpu.save_state(&mut data);
-        self.memory.save_state(&mut data);
-        self.ppu.save_state(&mut data);
-        self.registers.save_state(&mut data);
-        save_u64(&mut data, self.master_clock);
-        data.push(self.p1_input);
-        data.push(self.p1_data);
-        data.push(self.p2_input);
-        data.push(self.p2_data);
-        save_bool(&mut data, self.input_latch);
-        self.mapper.save_state(&mut data);
-        save_u32(&mut data, self.last_frame);
-        data
+        let mut buff = vec!();
+        self.apu.save_state(&mut buff);
+        self.cpu.save_state(&mut buff);
+        self.memory.save_state(&mut buff);
+        self.ppu.save_state(&mut buff);
+        self.registers.save_state(&mut buff);
+        save_u64(&mut buff, self.master_clock);
+        save_u8(&mut buff, self.p1_input);
+        save_u8(&mut buff, self.p1_data);
+        save_u8(&mut buff, self.p2_input);
+        save_u8(&mut buff, self.p2_data);
+        save_bool(&mut buff, self.input_latch);
+        self.mapper.save_state(&mut buff);
+        save_u32(&mut buff, self.last_frame);
+        buff
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.last_frame = load_u32(buff);
+        load_u32(buff, &mut self.last_frame);
         self.mapper.load_state(buff);
-        self.input_latch = load_bool(buff);
-        self.p2_data = buff.pop().unwrap();
-        self.p2_input = buff.pop().unwrap();
-        self.p1_data = buff.pop().unwrap();
-        self.p1_input = buff.pop().unwrap();
-        self.master_clock = load_u64(buff);
+        load_bool(buff, &mut self.input_latch);
+        load_u8(buff, &mut self.p2_data);
+        load_u8(buff, &mut self.p2_input);
+        load_u8(buff, &mut self.p1_data);
+        load_u8(buff, &mut self.p1_input);
+        load_u64(buff, &mut self.master_clock);
         self.registers.load_state(buff);
         self.ppu.load_state(buff);
         self.memory.load_state(buff);

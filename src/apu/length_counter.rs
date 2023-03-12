@@ -37,14 +37,14 @@ impl LengthCounterState{
     }
 
     pub fn save_state(&self, buff: &mut Vec<u8>) {
-        buff.push(self.length);
+        save_u8(buff, self.length);
         save_bool(buff, self.halt_flag);
         save_bool(buff, self.channel_enabled);
     }
 
     pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        self.channel_enabled = load_bool(buff);
-        self.halt_flag = load_bool(buff);
-        self.length = buff.pop().unwrap();
+        load_bool(buff, &mut self.channel_enabled);
+        load_bool(buff, &mut self.halt_flag);
+        load_u8(buff, &mut self.length);
     }
 }
