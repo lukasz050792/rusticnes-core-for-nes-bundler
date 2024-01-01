@@ -1,72 +1,55 @@
-use crate::save_load::*;
+use crate::common::Clock;
+use serde::{Deserialize, Serialize};
 
-pub struct VolumeEnvelopeState {
-    // Volume Envelope
-    pub volume_register: u8,
-    pub decay: u8,
-    pub divider: u8,
-    pub enabled: bool,
-    pub looping: bool,
-    pub start_flag: bool,
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[must_use]
+pub(crate) struct Envelope {
+    pub(crate) enabled: bool,
+    loops: bool,
+    pub(crate) reset: bool,
+    pub(crate) volume: u8,
+    pub(crate) constant_volume: u8,
+    counter: u8,
 }
 
-impl VolumeEnvelopeState {
-    pub fn new() -> VolumeEnvelopeState {
-        return VolumeEnvelopeState {
-            volume_register: 0,
-            decay: 0,
-            divider: 0,
+impl Envelope {
+    pub(crate) const fn new() -> Self {
+        Self {
             enabled: false,
-            looping: false,
-            start_flag: false,
+            loops: false,
+            reset: false,
+            volume: 0u8,
+            constant_volume: 0u8,
+            counter: 0u8,
         }
     }
 
-    pub fn current_volume(&self) -> u8 {
-        if self.enabled {
-            return self.decay;
-        } else {
-            return self.volume_register;
-        }
+    // $4000/$4004/$400C Envelope control
+    #[inline]
+    pub(crate) fn write_ctrl(&mut self, val: u8) {
+        self.loops = (val >> 5) & 1 == 1; // D5
+        self.enabled = (val >> 4) & 1 == 0; // !D4
+        self.constant_volume = val & 0x0F; // D3..D0
     }
+}
 
-    pub fn clock(&mut self) {
-        if self.start_flag {
-            self.decay = 15;
-            self.start_flag = false;
-            self.divider = self.volume_register;
+impl Clock for Envelope {
+    #[inline]
+    fn clock(&mut self) -> usize {
+        if self.reset {
+            self.reset = false;
+            self.volume = 0x0F;
+            self.counter = self.constant_volume;
+        } else if self.counter > 0 {
+            self.counter -= 1;
         } else {
-            // Clock the divider
-            if self.divider == 0 {
-                self.divider = self.volume_register;
-                if self.decay > 0 {
-                    self.decay -= 1;
-                } else {
-                    if self.looping {
-                        self.decay = 15;
-                    }
-                }
-            } else {
-                self.divider = self.divider - 1;
+            self.counter = self.constant_volume;
+            if self.volume > 0 {
+                self.volume -= 1;
+            } else if self.loops {
+                self.volume = 0x0F;
             }
         }
-    }
-
-    pub fn save_state(&self, buff: &mut Vec<u8>) {
-        save_u8(buff, self.volume_register);
-        save_u8(buff, self.decay);
-        save_u8(buff, self.divider);
-        save_bool(buff, self.enabled);
-        save_bool(buff, self.looping);
-        save_bool(buff, self.start_flag);
-    }
-
-    pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        load_bool(buff, &mut self.start_flag);
-        load_bool(buff, &mut self.looping);
-        load_bool(buff, &mut self.enabled);
-        load_u8(buff, &mut self.divider);
-        load_u8(buff, &mut self.decay);
-        load_u8(buff, &mut self.volume_register);
+        1
     }
 }
