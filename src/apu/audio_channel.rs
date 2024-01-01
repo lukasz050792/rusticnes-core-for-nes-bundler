@@ -37,7 +37,7 @@ pub trait AudioChannelState {
     fn mute(&mut self);
     fn unmute(&mut self);
 
-    fn playing(&self) -> bool { return false; }
+    fn playing(&self) -> bool { return true; }
     fn rate(&self) -> PlaybackRate { return PlaybackRate::SampleRate{frequency: 1.0}; }
     fn volume(&self) -> Option<Volume> {return None}
     fn timbre(&self) -> Option<Timbre> {return None}
