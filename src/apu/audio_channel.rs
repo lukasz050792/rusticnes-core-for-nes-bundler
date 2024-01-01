@@ -46,7 +46,7 @@ pub trait AudioChannelState {
            results should be based on 2A03 pulse, where 1.0 corresponds to 0xF */
         if !self.playing() {return 0.0}
         match self.volume() {
-            Some(Volume::VolumeIndex{index, max}) => {return index as f32 / (max + 1) as f32},
+            Some(Volume::VolumeIndex{index, max}) => {return index as f64 / (max + 1) as f64},
             None => {return 1.0}
         }
     }
