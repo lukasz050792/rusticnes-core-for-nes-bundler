@@ -1,190 +1,170 @@
-use crate::save_load::*;
+use crate::{
+    apu::{envelope::Envelope, length_counter::LengthCounter},
+    common::{Clock, Kind, NesRegion, Regional, Reset},
+};
+use serde::{Deserialize, Serialize};
 
-use super::length_counter::LengthCounterState;
-use super::volume_envelope::VolumeEnvelopeState;
-use super::audio_channel::AudioChannelState;
-use super::audio_channel::PlaybackRate;
-use super::audio_channel::Volume;
-use super::audio_channel::Timbre;
-use super::ring_buffer::RingBuffer;
-use super::filters;
-use super::filters::DspFilter;
-
-pub struct NoiseChannelState {
-    pub name: String,
-    pub chip: String,
-    pub debug_disable: bool,
-    pub output_buffer: RingBuffer,
-    pub edge_buffer: RingBuffer,
-    pub last_edge: bool,
-    pub debug_filter: filters::HighPassIIR,
-    pub length: u8,
-    pub length_halt_flag: bool,
-
-    pub envelope: VolumeEnvelopeState,
-    pub length_counter: LengthCounterState,
-
-    pub mode: u8,
-    pub period_initial: u16,
-    pub period_current: u16,
-
-    // Actually a 15-bit register
-    pub shift_register: u16,
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
+enum ShiftMode {
+    Zero,
+    One,
 }
 
-impl NoiseChannelState {
-    pub fn new(channel_name: &str, chip_name: &str, ) -> NoiseChannelState {
-        return NoiseChannelState {
-            name: String::from(channel_name),
-            chip: String::from(chip_name),
-            debug_disable: false,
-            output_buffer: RingBuffer::new(32768),
-            edge_buffer: RingBuffer::new(32768),
-            last_edge: false,
-            debug_filter: filters::HighPassIIR::new(44100.0, 300.0),
-            length: 0,
-            length_halt_flag: false,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[must_use]
+pub struct Noise {
+    region: NesRegion,
+    force_silent: bool,
+    enabled: bool,
+    freq_timer: u16,       // timer freq_counter reload value
+    freq_counter: u16,     // Current frequency timer value
+    shift: u16,            // Must never be 0
+    shift_mode: ShiftMode, // Zero (XOR bits 0 and 1) or One (XOR bits 0 and 6)
+    length: LengthCounter,
+    envelope: Envelope,
+}
 
-            envelope: VolumeEnvelopeState::new(),
-            length_counter: LengthCounterState::new(),
-            mode: 0,
-            period_initial: 0,
-            period_current: 0,
+impl Default for Noise {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-            // Actually a 15-bit register
-            shift_register: 1,
+impl Noise {
+    const FREQ_TABLE_NTSC: [u16; 16] = [
+        4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
+    ];
+    const FREQ_TABLE_PAL: [u16; 16] = [
+        4, 8, 14, 30, 60, 88, 118, 148, 188, 236, 354, 472, 708, 944, 1890, 3778,
+    ];
+    const SHIFT_BIT_15_MASK: u16 = !0x8000;
+
+    pub fn new() -> Self {
+        Self {
+            region: NesRegion::default(),
+            enabled: false,
+            force_silent: false,
+            freq_timer: 0u16,
+            freq_counter: 0u16,
+            shift: 1u16, // Must never be 0
+            shift_mode: ShiftMode::Zero,
+            length: LengthCounter::new(),
+            envelope: Envelope::new(),
         }
     }
 
-    pub fn clock(&mut self) {
-        if self.period_current == 0 {
-            self.period_current = self.period_initial - 1;
+    #[inline]
+    #[must_use]
+    pub const fn silent(&self) -> bool {
+        self.force_silent
+    }
 
-            let mut feedback = self.shift_register & 0b1;
-            if self.mode == 1 {
-                feedback ^= (self.shift_register >> 6) & 0b1;
+    #[inline]
+    pub fn toggle_silent(&mut self) {
+        self.force_silent = !self.force_silent;
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn length_counter(&self) -> u8 {
+        self.length.counter()
+    }
+
+    #[inline]
+    const fn freq_timer(region: NesRegion, val: u8) -> u16 {
+        match region {
+            NesRegion::Ntsc => Self::FREQ_TABLE_NTSC[(val & 0x0F) as usize] - 1,
+            NesRegion::Pal | NesRegion::Dendy => Self::FREQ_TABLE_PAL[(val & 0x0F) as usize] - 1,
+        }
+    }
+
+    #[inline]
+    pub fn clock_quarter_frame(&mut self) {
+        self.envelope.clock();
+    }
+
+    #[inline]
+    pub fn clock_half_frame(&mut self) {
+        self.length.clock();
+    }
+
+    #[must_use]
+    pub fn output(&self) -> f32 {
+        if self.shift & 1 == 0 && self.length.counter != 0 && !self.force_silent {
+            if self.envelope.enabled {
+                f32::from(self.envelope.volume)
             } else {
-                feedback ^= (self.shift_register >> 1) & 0b1;
+                f32::from(self.envelope.constant_volume)
             }
-            self.shift_register = self.shift_register >> 1;
-            self.shift_register |= feedback << 14;
-            self.last_edge = true;
         } else {
-            self.period_current -= 1;
+            0f32
         }
     }
 
-    pub fn output(&self) -> i16 {
-        if self.length_counter.length > 0 {
-            let mut sample = (self.shift_register & 0b1) as i16;
-            sample *= self.envelope.current_volume() as i16;
-            return sample;
+    pub fn write_ctrl(&mut self, val: u8) {
+        self.length.write_ctrl(val);
+        self.envelope.write_ctrl(val);
+    }
+
+    // $400E Noise timer
+    pub fn write_timer(&mut self, val: u8) {
+        self.freq_timer = Self::freq_timer(self.region, val);
+        self.shift_mode = if (val >> 7) & 1 == 1 {
+            ShiftMode::One
         } else {
-            return 0;
+            ShiftMode::Zero
+        };
+    }
+
+    pub fn write_length(&mut self, val: u8) {
+        if self.enabled {
+            self.length.load_value(val);
         }
+        self.envelope.reset = true;
     }
 
-    pub fn save_state(&self, buff: &mut Vec<u8>) {
-        save_u8(buff, self.length);
-        save_bool(buff, self.length_halt_flag);
-        self.envelope.save_state(buff);
-        self.length_counter.save_state(buff);
-        save_u8(buff, self.mode);
-        save_u16(buff, self.period_initial);
-        save_u16(buff, self.period_current);
-        save_u16(buff, self.shift_register);
-    }
-
-    pub fn load_state(&mut self, buff: &mut Vec<u8>) {
-        load_u16(buff, &mut self.shift_register);
-        load_u16(buff, &mut self.period_current);
-        load_u16(buff, &mut self.period_initial);
-        load_u8(buff, &mut self.mode);
-        self.length_counter.load_state(buff);
-        self.envelope.load_state(buff);
-        load_bool(buff, &mut self.length_halt_flag);
-        load_u8(buff, &mut self.length);
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+        if !enabled {
+            self.length.counter = 0;
+        }
     }
 }
 
-impl AudioChannelState for NoiseChannelState {
-    fn name(&self) -> String {
-        return self.name.clone();
+impl Clock for Noise {
+    fn clock(&mut self) -> usize {
+        if self.freq_counter > 0 {
+            self.freq_counter -= 1;
+        } else {
+            self.freq_counter = self.freq_timer;
+            let shift_amount = if self.shift_mode == ShiftMode::One {
+                6
+            } else {
+                1
+            };
+            let bit1 = self.shift & 1; // Bit 0
+            let bit2 = (self.shift >> shift_amount) & 1; // Bit 1 or 6 from above
+            self.shift = (self.shift & Self::SHIFT_BIT_15_MASK) | ((bit1 ^ bit2) << 14);
+            self.shift >>= 1;
+        }
+        1
+    }
+}
+
+impl Regional for Noise {
+    #[inline]
+    fn region(&self) -> NesRegion {
+        self.region
     }
 
-    fn chip(&self) -> String {
-        return self.chip.clone();
+    #[inline]
+    fn set_region(&mut self, region: NesRegion) {
+        self.region = region;
     }
+}
 
-    fn sample_buffer(&self) -> &RingBuffer {
-        return &self.output_buffer;
-    }
-
-    fn edge_buffer(&self) -> &RingBuffer {
-        return &self.edge_buffer;
-    }
-
-    fn record_current_output(&mut self) {
-        self.debug_filter.consume(self.output() as f32);
-        self.output_buffer.push((self.debug_filter.output() * -4.0) as i16);
-        self.edge_buffer.push(self.last_edge as i16);
-        self.last_edge = false;
-    }
-
-    fn min_sample(&self) -> i16 {
-        return -60;
-    }
-
-    fn max_sample(&self) -> i16 {
-        return 60;
-    }
-
-    fn muted(&self) -> bool {
-        return self.debug_disable;
-    }
-
-    fn mute(&mut self) {
-        self.debug_disable = true;
-    }
-
-    fn unmute(&mut self) {
-        self.debug_disable = false;
-    }
-
-    fn playing(&self) -> bool {
-        return 
-            (self.length_counter.length > 0) &&
-            (self.envelope.current_volume() > 0);
-    }
-
-    fn rate(&self) -> PlaybackRate {
-        let lsfr_index = match self.period_initial {
-            4    => {0xF},
-            8    => {0xE},
-            16   => {0xD},
-            32   => {0xC},
-            64   => {0xB},
-            96   => {0xA},
-            128  => {0x9},
-            160  => {0x8},
-            202  => {0x7},
-            254  => {0x6},
-            380  => {0x5},
-            508  => {0x4},
-            762  => {0x3},
-            1016 => {0x2},
-            2034 => {0x1},
-            4068 => {0x0},
-            _ => {0x0} // also unreachable
-        };
-        return PlaybackRate::LfsrRate {index: lsfr_index, max: 0xF};
-    }
-
-    fn volume(&self) -> Option<Volume> {
-        return Some(Volume::VolumeIndex{ index: self.envelope.current_volume() as usize, max: 15 });
-    }
-
-    fn timbre(&self) -> Option<Timbre> {
-        return Some(Timbre::LsfrMode{index: self.mode as usize, max: 1});
+impl Reset for Noise {
+    fn reset(&mut self, _kind: Kind) {
+        *self = Self::new();
     }
 }
