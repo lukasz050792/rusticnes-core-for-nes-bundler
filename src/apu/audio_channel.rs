@@ -6,9 +6,9 @@ use super::RingBuffer;
 
 #[derive(Clone)]
 pub enum PlaybackRate {
-    FundamentalFrequency { frequency: f32 },
+    FundamentalFrequency { frequency: f64 },
     LfsrRate { index: usize, max: usize },
-    SampleRate { frequency: f32 },
+    SampleRate { frequency: f64 },
 }
 
 #[derive(Clone)]
